@@ -81,11 +81,21 @@ def generate_sql_query(schema, user_question, llm_sql):
             schema_lines.append(f"#   - {col}")
     schema_str = "\n".join(schema_lines)
 
-    prompt = f"""# Task: Convert user's natural language query into valid SQLite SQL.
+    # Qwen-optimized prompt
+    prompt = f"""# Task: Convert the user's natural language query into a valid SQLite SQL query.
+# Use only the schema provided below.
+# Wrap any SQL keyword or mixed-case column/table name in double quotes (e.g., "To").
+# Avoid guessing columns or tables not in the schema.
+# Only return the SQL query — no explanation or formatting.
+# Use SQLite syntax.
+# Avoid JOINs unless explicitly requested.
+# Do not return explanations — only the SQL query.
+# return the query without quotation marks.
+
 {schema_str}
 
 # User Question:
-# {user_question}
+# {user_question} # user_question was mispelled in the original code
 
 # SQL Query:"""
 
@@ -115,15 +125,28 @@ def generate_insights_from_data(df, user_query):
         return "No data was returned from the query to analyze."
     preview = df.head(20).to_markdown(index=False)
 
-    prompt = f"""You are a strategic analyst. Analyze the data below.
+    prompt = f"""
+You are a strategic data analyst AI assistant powered by a high-performance reasoning model. Your task is to deeply analyze a SQL query result table and extract meaningful insights that help the user understand their data and make smart decisions.
 
-User's Question:
+### User's Natural Language Question:
 {user_query}
 
-Data:
+
+Analyze the following data and provide a comprehensive report that includes:
+
+1. Key findings and summaries.
+2. Interesting trends, anomalies, or outliers.
+3. Any evident correlations or patterns.
+4. Predictive insights based on patterns in the data.
+5. Actionable recommendations that can guide decision-making.
+
+Avoid simply repeating the table values. Be insightful and business-oriented.
+
+### DATA PREVIEW:
 {preview}
 
-Insights:"""
+### INSIGHTS:
+"""
 
     response = llm_reasoning.invoke(prompt)
     return response.content.strip()
