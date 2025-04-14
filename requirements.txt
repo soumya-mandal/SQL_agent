@@ -1,0 +1,8 @@
+streamlit
+pandas
+langchain
+langgraph
+langchain_community
+langchain_groq
+sentence-transformers
+faiss-cpu
