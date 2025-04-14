@@ -1,126 +1,153 @@
 import streamlit as st
 import sqlite3
-import pandas as pd
-from groq import Groq
+import tempfile
+import os
+import json
+from langchain_community.llms import Groq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_community.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+from langchain_community.document_loaders import JSONLoader
+from langchain.embeddings import FakeEmbeddings  # Replacing OpenAIEmbeddings for compatibility
 
-# Set Streamlit page config
-st.set_page_config(page_title="AI SQL Assistant", layout="wide")
+# App Config
+st.set_page_config(page_title="SQL Chat", layout="wide")
+st.title("💬 SQL Chat with Insight Generator")
 
-# Function to analyze the database and extract schema information
-def analyze_db(uploaded_file):
-    conn = sqlite3.connect(uploaded_file)
+# Upload SQLite file
+uploaded_file = st.file_uploader("Upload SQLite .db file", type=["db"])
+
+if uploaded_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_file:
+        tmp_file.write(uploaded_file.read())
+        db_path = tmp_file.name
+
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
+    # Detect schema
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
 
     schema_info = {}
-    for table_name in tables:
-        table_name = table_name[0]
-        cursor.execute(f"PRAGMA table_info({table_name});")
+    for table in tables:
+        table_name = table[0]
+        cursor.execute(f"PRAGMA table_info({table_name})")
         columns = cursor.fetchall()
         schema_info[table_name] = [col[1] for col in columns]
 
-    conn.close()
-    return schema_info
+    # Show schema scrollable
+    with st.expander("📜 Detected Schema"):
+        schema_text = "\n".join(f"{t}: {', '.join(c)}" for t, c in schema_info.items())
+        st.code(schema_text, language="sql")
 
-# Function to convert schema info to natural language for RAG context
-def generate_schema_context(schema_info):
-    context = ""
-    for table, columns in schema_info.items():
-        context += f"Table '{table}' has columns: {', '.join(columns)}.\n"
-    return context
+    schema_str = json.dumps(schema_info)
 
-# Function to execute a SQL query and return the result
-def execute_query(uploaded_file, query):
-    conn = sqlite3.connect(uploaded_file)
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
+    # Load GROQ LLM
+    llm = Groq(model="mixtral-8x7b-32768", api_key=st.secrets["GROQ_API_KEY"])
 
-# Load the Groq API key from Streamlit secrets
-groq_api_key = st.secrets["GROQ_API_KEY"]
-client = Groq(api_key=groq_api_key)
+    # Prompt templates
+    sql_prompt = ChatPromptTemplate.from_template("""
+        You are an expert in converting natural language questions into SQL queries. 
+        Given a database schema: {schema}
+        Generate a valid SQLite SQL query for the question: {question}
+    """)
+    sql_chain = sql_prompt | llm | StrOutputParser()
 
-# Streamlit App
-st.title("📊 AI SQL Assistant for Your SQLite DB")
+    insight_prompt = ChatPromptTemplate.from_template("""
+        Given the user's question and the SQL result: 
+        Question: {question}
+        SQL Result: {data}
+        Generate a meaningful and helpful business insight.
+    """)
+    insight_chain = insight_prompt | llm | StrOutputParser()
 
-# File uploader for .db file
-uploaded_file = st.file_uploader("Upload your SQLite .db file", type=["db"])
+    # RAG Data
+    pairs = [
+        {"query": "List all customers", "sql": "SELECT * FROM customers;"},
+        {"query": "Show all rental details", "sql": "SELECT * FROM rentals;"},
+        {"query": "How many rentals were made?", "sql": "SELECT COUNT(*) FROM rentals;"},
+        {"query": "What are the top 5 rented films?", "sql": """
+            SELECT film_id, COUNT(*) as rental_count 
+            FROM rentals 
+            GROUP BY film_id 
+            ORDER BY rental_count DESC 
+            LIMIT 5;
+        """},
+        {"query": "Show the list of staff members", "sql": "SELECT * FROM staff;"},
+        {"query": "What is the total revenue?", "sql": "SELECT SUM(amount) FROM payments;"},
+        {"query": "List top customers by payment", "sql": """
+            SELECT customer_id, SUM(amount) as total_paid 
+            FROM payments 
+            GROUP BY customer_id 
+            ORDER BY total_paid DESC 
+            LIMIT 5;
+        """},
+    ]
 
-if uploaded_file:
-    st.success("Database uploaded successfully!")
+    rag_path = os.path.join(tempfile.gettempdir(), "faq_rag.json")
+    with open(rag_path, "w") as f:
+        json.dump(pairs, f)
 
-    # Step 1: Show the database schema
-    schema_info = analyze_db(uploaded_file)
-    st.subheader("Detected Database Schema")
-    with st.expander("Click to view schema"):
-        with st.container():
-            st.markdown("<div style='max-height: 300px; overflow-y: scroll;'>", unsafe_allow_html=True)
-            for table, columns in schema_info.items():
-                st.markdown(f"**{table}**: {', '.join(columns)}")
-            st.markdown("</div>", unsafe_allow_html=True)
+    loader = JSONLoader(file_path=rag_path, jq_schema=".[]", text_content=False)
+    docs = loader.load()
 
-    # Step 2: Generate SQL from natural language query and provide insight
-    schema_context = generate_schema_context(schema_info)
+    vectorstore = FAISS.from_documents(docs, FakeEmbeddings())
+    retriever = vectorstore.as_retriever()
 
-    # Add more RAG examples from your original code
-    rag_examples = """
-    Example 1:
-    User: Show me the total revenue generated by each category.
-    SQL: SELECT c.name AS category, SUM(p.amount) AS total_revenue FROM payments p JOIN products pr ON p.product_id = pr.id JOIN categories c ON pr.category_id = c.id GROUP BY c.name;
+    rag_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-    Example 2:
-    User: Which employees have not made any sales?
-    SQL: SELECT e.name FROM employees e LEFT JOIN sales s ON e.id = s.employee_id WHERE s.id IS NULL;
+    # Chat Session State
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
 
-    Example 3:
-    User: Show the top 5 customers by total purchase amount.
-    SQL: SELECT c.name, SUM(o.amount) as total_spent FROM orders o JOIN customers c ON o.customer_id = c.id GROUP BY c.name ORDER BY total_spent DESC LIMIT 5;
+    # Question Loop
+    with st.form(key="chat_form"):
+        user_input = st.text_input("Ask your question", key="input_text")
+        submit = st.form_submit_button("Submit")
 
-    Example 4:
-    User: What are the average ratings for each product?
-    SQL: SELECT p.name, AVG(r.rating) FROM products p JOIN reviews r ON p.id = r.product_id GROUP BY p.name;
-    """
+    if submit and user_input:
+        try:
+            # SQL Generation
+            sql_query = sql_chain.invoke({"schema": schema_str, "question": user_input})
 
-    while True:
-        st.subheader("Ask a question about your data")
-        user_question = st.text_input("Enter your question")
+            # SQL Execution
+            cursor.execute(sql_query)
+            result = cursor.fetchall()
 
-        if user_question:
-            with st.spinner("Generating SQL query and insight..."):
-                prompt = f"""
-You are a SQL expert. Given the following database schema and examples, generate a valid SQLite SQL query for the user's question.
+            # Insight or RAG fallback
+            if not result:
+                rag_result = rag_chain.run(user_input)
+                st.warning("⚠️ No SQL data. Showing fallback from RAG:")
+                st.write(rag_result)
+                st.session_state.chat_history.append((user_input, rag_result))
+            else:
+                insight = insight_chain.invoke({
+                    "question": user_input,
+                    "data": str(result)
+                })
 
-Database Schema:
-{schema_context}
+                st.success("✅ SQL Query")
+                st.code(sql_query.strip(), language="sql")
 
-Previous Examples:
-{rag_examples}
+                st.success("📊 Insight")
+                st.write(insight)
 
-User Question: {user_question}
-SQL:
-"""
-                
-                response = client.chat.completions.create(
-                    model="mixtral-8x7b-32768",
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                sql_query = response.choices[0].message.content.strip()
+                st.session_state.chat_history.append((user_input, insight))
 
-                st.code(sql_query, language="sql")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
 
-                try:
-                    result_df = execute_query(uploaded_file, sql_query)
-                    st.success("Query executed successfully. Here are the results:")
-                    st.dataframe(result_df)
-                except Exception as e:
-                    st.error(f"Error executing query: {e}")
+    # Show Chat History
+    if st.session_state.chat_history:
+        with st.expander("🗂 Chat History"):
+            for q, a in st.session_state.chat_history:
+                st.markdown(f"**Q:** {q}")
+                st.markdown(f"**A:** {a}")
+                st.markdown("---")
 
-            # Ask user if they want to continue
-            continue_prompt = st.radio("Would you like to ask another question?", ("Yes", "No"), index=0)
-            if continue_prompt == "No":
-                st.info("Thank you for using the AI SQL Assistant!")
-                break
+    # Clean up temp files
+    if db_path:
+        conn.close()
+        os.remove(db_path)
