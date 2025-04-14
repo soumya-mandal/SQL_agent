@@ -1,8 +1,10 @@
 streamlit
-pandas
 langchain
 langgraph
-langchain_community
+groq
 langchain_groq
+langchain_community
+pandas
+sqlite-utils
 sentence-transformers
 faiss-cpu
