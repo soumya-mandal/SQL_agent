@@ -17,7 +17,7 @@ from langchain.chains import ConversationChain
 #groq_api_key = st.secrets["GROQ_API_KEY"]
 
 # Ask user for GROQ API key
-st.sidebar.title("🔐 Enter GROQ API Key")
+st.sidebar.title("Enter GROQ API Key")
 groq_api_key = st.sidebar.text_input("API Key", type="password")
 
 if not groq_api_key:
@@ -38,7 +38,7 @@ memory = ConversationBufferMemory(memory_key="history", return_messages=True)
 conversation_chain = ConversationChain(llm=llm_reasoning, memory=memory, verbose=False)
 
 # Sidebar - File uploader
-st.sidebar.title("📁 Upload SQLite DB")
+st.sidebar.title("Upload SQLite DB")
 uploaded_file = st.sidebar.file_uploader("Choose a SQLite DB file", type=["db"])
 
 
@@ -181,7 +181,7 @@ if uploaded_file is not None:
     st.success("Database uploaded successfully.")
     schema = analyze_db_schema(db_path)
 
-    nl_query = st.text_input("💬 Ask a natural language query about your data:")
+    nl_query = st.text_input("Ask a natural language query about your data:")
     if nl_query:
         df, sql_query, error = execute_sql_query(db_path, nl_query, schema, llm_sql)
         st.code(sql_query, language="sql")
