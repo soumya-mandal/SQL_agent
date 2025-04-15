@@ -160,7 +160,7 @@ Analyze the following data and provide a comprehensive report that includes:
 4. Predictive insights based on patterns in the data.
 5. Actionable recommendations that can guide decision-making.
 
-Avoid simply repeating the table values. Be insightful and business-oriented.
+Avoid simply repeating the table values. Be insightful and business-oriented. Provide all the insights in bullet points. Do not make up things, if you do not have contexual information, just say "I do not have enough information to answer this question".
 
 ### DATA PREVIEW:
 {preview}
