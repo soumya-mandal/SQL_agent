@@ -14,7 +14,14 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationChain
 
 # Load API key from Streamlit secrets
-groq_api_key = st.secrets["GROQ_API_KEY"]
+#groq_api_key = st.secrets["GROQ_API_KEY"]
+
+# Ask user for GROQ API key
+st.sidebar.title("🔐 Enter GROQ API Key")
+groq_api_key = st.sidebar.text_input("API Key", type="password")
+
+if not groq_api_key:
+    st.warning("Please enter your GROQ API key in the sidebar to continue.")
 
 # Initialize models
 llm_sql = ChatGroq(model_name="qwen-2.5-coder-32b", api_key=groq_api_key)
