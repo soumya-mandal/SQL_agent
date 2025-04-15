@@ -42,6 +42,9 @@ def create_rag_index(rag_data_path: str = "rag_db.pkl"):
     rag_data = [
         ("Get the first and last name of customers living in Canada.", "SELECT first_name, last_name FROM customer c JOIN address a ON c.address_id = a.address_id JOIN city ci ON a.city_id = ci.city_id JOIN country co ON ci.country_id = co.country_id WHERE co.country = 'Canada';"),
         ("Find all films with a rental rate greater than $4.", "SELECT title, rental_rate FROM film WHERE rental_rate > 4;"),
+        ("What’s the average payment amount per rental transaction?", "SELECT AVG(amount) AS avg_rental_payment FROM payment;"),
+        ("How do sales compare across different countries?", "SELECT co.country, SUM(p.amount) AS total_sales FROM payment p JOIN customer c ON p.customer_id = c.customer_id JOIN address a ON c.address_id = a.address_id JOIN city ci ON a.city_id = ci.city_id JOIN country co ON ci.country_id = co.country_id GROUP BY co.country ORDER BY total_sales DESC; "),
+        ("What’s the daily sales performance over the past week?", "SELECT DATE(payment_date) AS day, SUM(amount) AS daily_sales FROM payment WHERE payment_date >= CURDATE() - INTERVAL 7 DAY GROUP BY day ORDER BY day;"),
         ("Show the monthly sales trend over time.", "SELECT strftime('%Y-%m', payment_date) AS month, SUM(amount) AS monthly_sales FROM payment GROUP BY month ORDER BY month;"),
         ("Show how many customers are assigned to each store.", "SELECT store_id, COUNT(customer_id) AS customer_count FROM customer GROUP BY store_id;"),
         ("Get the address and contact details for all stores.", "SELECT s.store_id, a.address, a.phone, c.city, co.country FROM store s JOIN address a ON s.address_id = a.address_id JOIN city c ON a.city_id = c.city_id JOIN country co ON c.country_id = co.country_id;"),
