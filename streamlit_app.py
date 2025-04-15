@@ -34,6 +34,28 @@ conversation_chain = ConversationChain(llm=llm_reasoning, memory=memory, verbose
 st.sidebar.title("📁 Upload SQLite DB")
 uploaded_file = st.sidebar.file_uploader("Choose a SQLite DB file", type=["db"])
 
+# Collapsible thinking tab
+import re
+def render_insight_with_think(insight_text: str):
+    # Extract <think> content
+    think_match = re.search(r"<think>(.*?)</think>", insight_text, re.DOTALL)
+    if think_match:
+        think_content = think_match.group(1).strip()
+        visible_text = re.sub(r"<think>.*?</think>", "", insight_text, flags=re.DOTALL).strip()
+    else:
+        think_content = None
+        visible_text = insight_text.strip()
+
+    # Render visible text
+    st.markdown(visible_text)
+
+    # Render collapsible <think> section
+    if think_content:
+        with st.expander("🧠 Show advanced reasoning (<think>)"):
+            st.markdown(f"```text\n{think_content}\n```")
+
+
+
 # RAG Setup
 def create_rag_index(rag_data_path: str = "rag_db.pkl"):
     global rag_index, rag_nl_queries, rag_sql_queries
@@ -180,4 +202,4 @@ if uploaded_file is not None:
                 insight_question = st.text_input("What do you want to know from this data?")
                 if insight_question:
                     insights = generate_insights_from_data(df, insight_question)
-                    st.markdown(insights)
+                    render_insight_with_think(insights)
