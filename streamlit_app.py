@@ -131,7 +131,7 @@ def generate_insights_from_data(df, user_query):
     preview = df.head(20).to_markdown(index=False)
 
     prompt = f"""
-You are a strategic data analyst AI assistant powered by a high-performance reasoning model. Your task is to deeply analyze a SQL query result table and extract meaningful insights that help the user understand their data and make smart decisions.
+You are a strategic data analyst AI assistant powered by a high-performance reasoning model. When the user asks some straight question regarding some parameter to predict something, or recommend something, give them a straight answer and then Your task is to deeply analyze a SQL query result table and extract meaningful insights that help the user understand their data and make smart decisions. if straight question is not being asked, just deeply analyze the dataframe given to you as the result table and extract meaningful insights that help the user understand their data and make smart decisions.
 
 ### User's Natural Language Question:
 {user_query}
