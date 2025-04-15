@@ -10,6 +10,8 @@ from langchain_groq.chat_models import ChatGroq
 from langchain.prompts import PromptTemplate
 from sentence_transformers import SentenceTransformer
 from langchain.schema import HumanMessage
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationChain
 
 # Load API key from Streamlit secrets
 groq_api_key = st.secrets["GROQ_API_KEY"]
@@ -23,6 +25,10 @@ embedder = SentenceTransformer("all-MiniLM-L6-v2")
 rag_index = None
 rag_nl_queries = []
 rag_sql_queries = []
+
+# Conversation memory setup
+memory = ConversationBufferMemory(memory_key="history", return_messages=True)
+conversation_chain = ConversationChain(llm=llm_reasoning, memory=memory, verbose=False)
 
 # Sidebar - File uploader
 st.sidebar.title("📁 Upload SQLite DB")
@@ -81,7 +87,6 @@ def generate_sql_query(schema, user_question, llm_sql):
             schema_lines.append(f"#   - {col}")
     schema_str = "\n".join(schema_lines)
 
-    # Qwen-optimized prompt
     prompt = f"""# Task: Convert the user's natural language query into a valid SQLite SQL query.
 # Use only the schema provided below.
 # Wrap any SQL keyword or mixed-case column/table name in double quotes (e.g., "To").
@@ -95,7 +100,7 @@ def generate_sql_query(schema, user_question, llm_sql):
 {schema_str}
 
 # User Question:
-# {user_question} # user_question was mispelled in the original code
+# {user_question}
 
 # SQL Query:"""
 
@@ -148,8 +153,10 @@ Avoid simply repeating the table values. Be insightful and business-oriented.
 ### INSIGHTS:
 """
 
-    response = llm_reasoning.invoke(prompt)
-    return response.content.strip()
+    memory.chat_memory.add_user_message(user_query)
+    memory.chat_memory.add_ai_message(preview)
+    response = conversation_chain.invoke({"input": prompt})
+    return response["response"]
 
 # Streamlit UI
 if uploaded_file is not None:
