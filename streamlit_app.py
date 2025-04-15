@@ -34,27 +34,6 @@ conversation_chain = ConversationChain(llm=llm_reasoning, memory=memory, verbose
 st.sidebar.title("📁 Upload SQLite DB")
 uploaded_file = st.sidebar.file_uploader("Choose a SQLite DB file", type=["db"])
 
-# Collapsible thinking tab
-import re
-def render_insight_with_think(insight_text: str):
-    # Extract <think> content
-    think_match = re.search(r"<think>(.*?)</think>", insight_text, re.DOTALL)
-    if think_match:
-        think_content = think_match.group(1).strip()
-        visible_text = re.sub(r"<think>.*?</think>", "", insight_text, flags=re.DOTALL).strip()
-    else:
-        think_content = None
-        visible_text = insight_text.strip()
-
-    # Render visible text
-    st.markdown(visible_text)
-
-    # Render collapsible <think> section
-    if think_content:
-        with st.expander("🧠 Show advanced reasoning (<think>)"):
-            st.markdown(f"```text\n{think_content}\n```")
-
-
 
 # RAG Setup
 def create_rag_index(rag_data_path: str = "rag_db.pkl"):
@@ -179,6 +158,28 @@ Avoid simply repeating the table values. Be insightful and business-oriented.
     memory.chat_memory.add_ai_message(preview)
     response = conversation_chain.invoke({"input": prompt})
     return response["response"]
+
+
+# Collapsible thinking tab
+import re
+def render_insight_with_think(insight_text: str):
+    # Extract <think> content
+    think_match = re.search(r"<think>(.*?)</think>", insight_text, re.DOTALL)
+    if think_match:
+        think_content = think_match.group(1).strip()
+        visible_text = re.sub(r"<think>.*?</think>", "", insight_text, flags=re.DOTALL).strip()
+    else:
+        think_content = None
+        visible_text = insight_text.strip()
+
+    # Render visible text
+    st.markdown(visible_text)
+
+    # Render collapsible <think> section
+    if think_content:
+        with st.expander("🧠 Show advanced reasoning (<think>)"):
+            st.markdown(f"```text\n{think_content}\n```")
+
 
 # Streamlit UI
 if uploaded_file is not None:
