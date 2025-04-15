@@ -174,31 +174,6 @@ Avoid simply repeating the table values. Be insightful and business-oriented.
     return response["response"]
 
 
-# # Streamlit UI
-# if uploaded_file is not None:
-#     db_path = "uploaded.db"
-#     with open(db_path, "wb") as f:
-#         f.write(uploaded_file.getbuffer())
-
-#     st.success("Database uploaded successfully.")
-#     schema = analyze_db_schema(db_path)
-
-#     nl_query = st.text_input("Ask a natural language query about your data:")
-#     if nl_query:
-#         df, sql_query, error = execute_sql_query(db_path, nl_query, schema, llm_sql)
-#         st.code(sql_query, language="sql")
-#         if error:
-#             st.error(error)
-#         else:
-#             st.dataframe(df)
-
-#             with st.expander("🔍 Get insights from the result"):
-#                 insight_question = st.text_input("What do you want to know from this data?")
-#                 if insight_question:
-#                     insights = generate_insights_from_data(df, insight_question)
-#                     st.markdown(insights)
-
-
 # Streamlit UI
 if uploaded_file is not None:
     db_path = "uploaded.db"
@@ -221,6 +196,31 @@ if uploaded_file is not None:
                 insight_question = st.text_input("What do you want to know from this data?")
                 if insight_question:
                     insights = generate_insights_from_data(df, insight_question)
-                    with st.expander("🧠 <think>"):
-                        st.markdown(insights)
+                    st.markdown(insights)
 
+
+# # Streamlit UI
+# if uploaded_file is not None:
+#     db_path = "uploaded.db"
+#     with open(db_path, "wb") as f:
+#         f.write(uploaded_file.getbuffer())
+
+#     st.success("Database uploaded successfully.")
+#     schema = analyze_db_schema(db_path)
+
+#     nl_query = st.text_input("Ask a natural language query about your data:")
+#     if nl_query:
+#         df, sql_query, error = execute_sql_query(db_path, nl_query, schema, llm_sql)
+#         st.code(sql_query, language="sql")
+#         if error:
+#             st.error(error)
+#         else:
+#             st.dataframe(df)
+
+#             with st.expander("🔍 Get insights from the result"):
+#                 insight_question = st.text_input("What do you want to know from this data?")
+#                 if insight_question:
+#                     insights = generate_insights_from_data(df, insight_question)
+                    
+#                     with st.expander("💭 AI Thinks..."):
+#                         st.markdown(insights)
