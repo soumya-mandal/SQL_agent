@@ -5,6 +5,7 @@ import streamlit as st
 import pickle
 import faiss
 import traceback
+import re
 
 from langchain_groq.chat_models import ChatGroq
 from langchain.prompts import PromptTemplate
@@ -174,6 +175,9 @@ Avoid simply repeating the table values. Be insightful and business-oriented. Pr
     return response["response"]
 
 
+def remove_think_tags(text):
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+
 # Streamlit UI
 if uploaded_file is not None:
     db_path = "uploaded.db"
@@ -196,7 +200,8 @@ if uploaded_file is not None:
                 insight_question = st.text_input("What do you want to know from this data?")
                 if insight_question:
                     insights = generate_insights_from_data(df, insight_question)
-                    st.markdown(insights)
+
+                    st.markdown(remove_think_tags(insights))
 
 
 # # Streamlit UI
