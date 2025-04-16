@@ -155,11 +155,9 @@ You are a strategic data analyst AI assistant powered by a high-performance reas
 
 Analyze the following data and provide a comprehensive report that includes:
 
-1. Key findings and summaries.
-2. Interesting trends, anomalies, or outliers.
-3. Any evident correlations or patterns.
-4. Predictive insights based on patterns in the data.
-5. Actionable recommendations that can guide decision-making.
+1. Recommendation for the user based on the data, with the heading "Recommendations".
+2. Insights from the data, including trends, patterns, and anomalies, with the heading "Insights".
+
 
 Avoid simply repeating the table values. Be insightful and business-oriented. Provide all the insights in bullet points. Do not make up things, if you do not have contexual information, just say "I do not have enough information to answer this question".
 
@@ -176,7 +174,7 @@ Avoid simply repeating the table values. Be insightful and business-oriented. Pr
 
 
 def remove_think_tags(text):
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    return re.sub(r"<think>*?</think>", "", text, flags=re.DOTALL)
 
 # Streamlit UI
 if uploaded_file is not None:
@@ -200,7 +198,6 @@ if uploaded_file is not None:
                 insight_question = st.text_input("What do you want to know from this data?")
                 if insight_question:
                     insights = generate_insights_from_data(df, insight_question)
-
                     st.markdown(remove_think_tags(insights))
 
 
@@ -229,3 +226,15 @@ if uploaded_file is not None:
                     
 #                     with st.expander("💭 AI Thinks..."):
 #                         st.markdown(insights)
+
+
+
+
+###########################################################
+
+
+# 1. Key findings and summaries.
+# 2. Interesting trends, anomalies, or outliers.
+# 3. Any evident correlations or patterns.
+# 4. Predictive insights based on patterns in the data.
+# 5. Actionable recommendations that can guide decision-making.
